@@ -1,0 +1,37 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+$script = <<-SCRIPT
+  sudo apt update
+  sudo apt upgrade
+  sudo apt install -y postgresql-12
+
+  sudo mv /etc/postgresql/12/main/postgresql.conf /etc/postgresql/12/main/postgresql.conf.backup
+  sed "s/#listen_addresses = 'localhost'/listen_addresses = '*'/g" /etc/postgresql/12/main/postgresql.conf.backup > /etc/postgresql/12/main/postgresql.conf
+
+  sudo echo "host  all  all  10.0.2.0/24  md5" >> /etc/postgresql/12/main/pg_hba.conf
+  sudo service postgresql restart
+
+  sudo -u postgres psql -c "ALTER USER postgres PASSWORD '232323'; "
+  sudo -u postgres createdb -E UTF8 help-me
+SCRIPT
+
+
+Vagrant.configure("2") do |config|
+  config.vm.define "Servidor PostgreSQL" do |servidor_postgre|
+    servidor_postgre.vm.box = "ubuntu/focal64"
+    config.vm.synced_folder "./Configs", "/Configs"
+    config.vm.synced_folder ".", "/vagrant", disabled: true
+
+    servidor_postgre.vm.network "forwarded_port", guest:5432, host:5432
+
+    servidor_postgre.vm.provision "shell", 
+    inline: $script
+
+    config.vm.provider "virtualbox" do |vb|
+      vb.memory = "2024"
+      vb.cpus = "2"
+    end
+  end
+end
+
